@@ -158,15 +158,23 @@ def same_rows_from_table(table: Any) -> Callable[[int, int], bool]:
 
 
 def batch_frame(version: LogicalVersion, prev: LogicalVersion | None, reader: _Reader) -> pa.Table:
-    """The rows a version delivers: new event_ids for an append, everything otherwise."""
+    """The rows a version delivers: for an append, the rows the commit added (a multiset
+    difference over every column, so a re-sent event_id with new values still counts);
+    for any other kind, the whole version."""
     cur = reader.content(version.snapshot_id)
     if version.kind != "append" or prev is None:
         return cur
     before = reader.content(prev.snapshot_id)
-    if "event_id" not in cur.column_names or "event_id" not in before.column_names:
+    if cur.schema.names != before.schema.names:
         return cur
-    seen = pc.is_in(cur["event_id"], value_set=before["event_id"])
-    return cur.filter(pc.invert(seen))
+    a, b = cur.to_pandas(), before.to_pandas()
+    cols = list(a.columns)
+    # number each duplicate so an exact row present once before and twice now counts once
+    a["_n"] = a.groupby(cols, dropna=False, sort=False).cumcount()
+    b["_n"] = b.groupby(cols, dropna=False, sort=False).cumcount()
+    merged = a.merge(b, on=[*cols, "_n"], how="left", indicator=True)
+    added = merged.index[merged["_merge"] == "left_only"]
+    return cur.take(pa.array(added, type=pa.int64()))
 
 
 # --- checks ------------------------------------------------------------------------------

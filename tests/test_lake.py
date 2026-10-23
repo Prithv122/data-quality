@@ -312,3 +312,13 @@ def test_demo_each_fault_is_flagged_by_its_family(demo):
     assert not alarms(res, "volume", version=15)
     assert not alarms(res, "schema")
     assert not alarms(res, "freshness")
+
+
+def test_append_batch_counts_rows_that_reuse_an_event_id():
+    base = events(range(10))
+    resent = events([3, 4], amount=-5.0)  # two old ids re-sent with new values
+    contents = {1: base, 2: pa.concat_tables([base, events(range(10, 15)), resent])}
+    versions = lake.logical_versions([(1, at(0), 10), (2, at(1), 17)], never)
+    frame = lake.batch_frame(versions[1], versions[0], lake._Reader(contents.__getitem__))
+    assert frame.num_rows == 7
+    assert sorted(frame["amount"].to_pylist()).count(-5.0) == 2
