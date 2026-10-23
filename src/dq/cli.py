@@ -171,6 +171,11 @@ def cmd_simulate(args: argparse.Namespace) -> int:
     ks = spec.K_GRID
     started = dt.datetime.now(dt.UTC)
     grid = run_grid(seeds, worlds, ks, jobs=args.jobs)
+    g3 = None
+    if args.g3:  # G3: a second run of the same seeds must give the same table
+        again = run_grid(seeds, worlds, ks, jobs=args.jobs)
+        same = grid.results.equals(again.results) and grid.conditions.equals(again.conditions)
+        g3 = {"passed": bool(same), "detail": "two runs identical" if same else "runs differ"}
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     grid.results.to_parquet(out / "results.parquet", index=False)
@@ -187,6 +192,7 @@ def cmd_simulate(args: argparse.Namespace) -> int:
         "rows": len(grid.results),
         "results_sha256": _sha256(out / "results.parquet"),
         "g2_problems": problems,
+        "g3": g3,
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(f"{len(grid.results):,} results in {manifest['seconds']} s -> {out}")
@@ -197,7 +203,48 @@ def cmd_simulate(args: argparse.Namespace) -> int:
             print(f"  {cid}: {ps[0]}")
         return 2
     print("G2 passed: every injected fault matches its label")
+    if g3 is not None:
+        print(f"G3 {'passed' if g3['passed'] else 'FAILED'}: {g3['detail']}")
+        return 0 if g3["passed"] else 2
     return 0
+
+
+def _unpassed_gates(raw: Path, manifest: dict) -> list[str]:
+    """Why the recorded gates do not cover this run; empty when G1-G5 all passed on its commit."""
+    sha = manifest.get("git_sha") or ""
+    out = []
+    if not sha or sha.endswith("-dirty"):
+        out.append(f"simulate ran on an uncommitted tree ({sha or 'no git'})")
+    if not (manifest.get("g3") or {}).get("passed"):
+        out.append("G3 not run or failed (dq simulate --g3)")
+    gates_file = raw / "gates.json"
+    if not gates_file.exists():
+        return [*out, "G1, G4, G5 not run (dq gates)"]
+    recorded = json.loads(gates_file.read_text(encoding="utf-8"))
+    if recorded.get("git_sha") != sha:
+        out.append(f"gates ran on {recorded.get('git_sha')}, simulate on {sha}")
+    for name in ("G1", "G4", "G5"):
+        gate = recorded["gates"].get(name)
+        if not gate or not gate["passed"]:
+            out.append(f"{name}: {gate['detail'] if gate else 'not run'}")
+    return out
+
+
+def cmd_gates(args: argparse.Namespace) -> int:
+    from dq.gates import run_gates
+
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    results = run_gates(out / "gates_work")
+    for name, gate in results.items():
+        print(f"{'pass' if gate['passed'] else 'FAIL'}  {name}: {gate['detail']}")
+    record = {
+        "git_sha": _git_sha(),
+        "ran": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
+        "gates": results,
+    }
+    (out / "gates.json").write_text(json.dumps(record, indent=2), encoding="utf-8")
+    return 0 if all(g["passed"] for g in results.values()) else 2
 
 
 def cmd_evaluate(args: argparse.Namespace) -> int:
@@ -223,6 +270,15 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
         print(f"{'FAIL' if ps else 'pass'}  {name}" + (f": {ps[0]}" if ps else ""))
     if failed:
         print("run invalid: a gate failed; no verdicts")
+        return 2
+    if manifest["scale"] == "smoke":
+        print("smoke grid: gates only, no verdicts (PREREGISTRATION.md, Scales)")
+        return 0
+    missing = _unpassed_gates(raw, manifest)
+    if missing:
+        for m in missing:
+            print(f"FAIL  {m}")
+        print("run invalid: every gate must pass on the same clean commit; no verdicts")
         return 2
 
     tables = evaluate.evaluate_tables(results, conds, ks=manifest["ks"])
@@ -309,32 +365,11 @@ def cmd_lake(args: argparse.Namespace) -> int:
 
 
 def cmd_gx_parity(args: argparse.Namespace) -> int:
-    from dq import faults, gx_parity, world
-    from dq.checkdefs import load_checks
-    from dq.checks import run_static
-    from dq.contract import load_contract
-    from dq.simulate import contexts
+    from dq.gates import g4_parity
 
-    suite, contract = load_checks(), load_contract()
-    columns = contract.tables[suite.table].columns
-    static = [c for c in suite.checks if c.kind == "static"]
-    clean = world.generate_stream(args.seed, "W1")
-    streams = [("clean", clean)] + [
-        (c.id, faults.inject(clean, c)) for c in faults.conditions((args.seed,), ("W1",))
-    ]
-    mismatches: list[str] = []
-    compared = 0
-    for sid, stream in streams:
-        for ctx in contexts(stream):
-            gx = gx_parity.gx_static_results(suite, ctx, columns)
-            own = [run_static(c, ctx, contract) for c in static]
-            compared += len(gx)
-            mismatches += [f"{sid}: {m}" for m in gx_parity.parity(own, gx)]
-    print(f"G4: {compared:,} (check, batch) verdicts compared over {len(streams)} streams")
-    for m in mismatches[:50]:
-        print(f"  {m}")
-    print("G4 passed" if not mismatches else f"G4 FAILED: {len(mismatches)} mismatches")
-    return 1 if mismatches else 0
+    passed, detail = g4_parity(args.seed)
+    print(f"G4 {'passed' if passed else 'FAILED'}: {detail}")
+    return 0 if passed else 1
 
 
 def cmd_dashboard(args: argparse.Namespace) -> int:
@@ -372,7 +407,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--scale", choices=("smoke", "full"), default="smoke")
     p.add_argument("--out", default=str(RAW_DIR))
     p.add_argument("--jobs", type=int, default=1)
+    p.add_argument("--g3", action="store_true", help="run twice and require identical results")
     p.set_defaults(fn=cmd_simulate)
+
+    p = sub.add_parser("gates", help="run gates G1, G4 and G5 and record them with the commit")
+    p.add_argument("--out", default=str(RAW_DIR))
+    p.set_defaults(fn=cmd_gates)
 
     p = sub.add_parser("evaluate", help="score a simulated grid and write the report")
     p.add_argument("--raw", default=str(RAW_DIR))

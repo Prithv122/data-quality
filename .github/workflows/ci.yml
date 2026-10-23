@@ -30,3 +30,9 @@ jobs:
 
       - name: Test
         run: uv run pytest --cov=src --cov-report=term-missing
+
+      - name: Gates on the smoke grid (G1-G6)
+        run: |
+          uv run dq simulate --scale smoke --g3 --jobs 2
+          uv run dq gates
+          uv run dq evaluate

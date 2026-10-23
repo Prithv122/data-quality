@@ -224,7 +224,11 @@ def render_markdown(tables: Mapping[str, pd.DataFrame], meta: Mapping[str, objec
             ]
     if shown:
         lines.append(
-            "Alarms in a faulted stream after its window closed that the clean twin lacks."
+            "Alarms in a faulted stream after its window closed that the clean twin lacks. "
+            "Two causes are not baseline contamination: the 7-batch freshness lapse delivers its "
+            "backlog one batch after the window (a real volume spike), and S1's frozen baseline "
+            "cannot be contaminated at all, so its rows here are direct after-effects. Only A's "
+            "rows can come from a fault entering the rolling baseline."
         )
         lines.append("")
         lines += _table(["World", "Arm", "k", "Fault", "Severity", "Alarms"], shown)
