@@ -97,7 +97,8 @@ dl.meta dt {
 dl.meta dd { margin: 0; overflow-wrap: anywhere; }
 nav { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 12px 0 0; font-size: .9rem; }
 nav a { color: var(--accent); }
-.scroll { overflow-x: auto; max-width: 100%; position: relative; border: 1px solid var(--border); border-radius: 6px; }
+.scroll { overflow-x: auto; max-width: 100%; position: relative;
+  border: 1px solid var(--border); border-radius: 6px; }
 table { border-collapse: collapse; width: 100%; font-size: .9rem; }
 th, td {
   padding: 5px 10px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--border);
