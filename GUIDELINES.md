@@ -47,17 +47,19 @@ pyarrow · PyYAML. Optional groups: `gx` (Great Expectations Core, parity gate o
 | `sinks.py` | `to_stdout`, `write_json`, `slack_payload`, `SlackTransport`, `send_slack` | Webhook URL from `DQ_SLACK_WEBHOOK_URL` only |
 | `store.py` | SQLite: `init`, `write_run`, `write_summary`, `read_runs`, `read_results`, `read_summary` | Results database; never committed |
 | `dashboard.py` | `build(store_path, out_dir) -> Path` | One static `index.html`, no JavaScript framework |
-| `cli.py` | `dq contract / build-fixture / run / simulate / evaluate / dashboard / lake` | |
+| `gates.py` | `g1_contract`, `g4_parity`, `g5_lake`, `run_gates(workdir)` | Recorded with the commit by `dq gates` |
+| `cli.py` | `dq contract / build-fixture / run / simulate [--g3] / gates / evaluate / lake / gx-parity / dashboard` | `evaluate` refuses verdicts unless G1–G6 passed on the same clean commit; smoke grid = gates only |
 
 ## Acceptance criteria
 
-- [ ] Gates G1–G6 in the pre-registration pass on the smoke grid in CI and on the reported run.
-- [ ] `dq simulate` + `dq evaluate` write `results/REPORT.md` with recall, false alarms, time to
+- [x] Gates G1–G6 pass on the reported run (`results/gates.json`, `results/manifest.json`); CI
+      runs them on the smoke grid (hosted CI not yet run: no GitHub repo).
+- [x] `dq simulate` + `dq evaluate` write `results/REPORT.md` with recall, false alarms, time to
       detect, verdicts and the predicted-versus-observed matrix, all computed by code.
-- [ ] The lake source runs against #35's real table; compaction raises no alarm in the logical
+- [x] The lake source runs against #35's real table; compaction raises no alarm in the logical
       walk.
-- [ ] `dq dashboard` builds a static site from the results store.
-- [ ] Runs from a clean clone using only the documented steps; tests, lint and CI green.
+- [x] `dq dashboard` builds a static site from the results store.
+- [ ] Runs from a clean clone using only the documented steps (to verify before shipping).
 
 ## Conventions
 

@@ -86,6 +86,21 @@ found:
   unless the twin join breaks. The lake freshness check runs once, on the latest version, against
   the wall clock; the "compaction hides staleness" half of G5 is shown on synthetic snapshots.
 
+### 2026-10-23 — reported run
+
+- `5f88111`, 5 seeds × W1/W0, k grid: 1,110,000 results in 189 s (6 processes), G3 two runs
+  identical, G1/G4/G5 passed (`results/gates.json`), G6 and the other evaluate-time gates passed.
+- H1 supported in W1 (a = 4, s = 1); W0 tie. H2 supported. H3: 1 mismatch (frozen null-rate
+  checks flag the 50% volume drop in 3/5 seeds; a halved batch doubles the null-rate variance).
+- Surprise worth remembering: in the stationary world the rolling baseline was noisier than the
+  frozen one at small k (47 vs 18 false volume alarms at k = 2). A 14-batch window estimates
+  the MAD from fewer, more recent points; frozen uses all 14 warm-up batches forever.
+- Report re-rendered after two cosmetic fixes (post-window rows listed twice when the operating
+  point equals k = 4; "-dirty" from untracked results). Same results file (sha256 in the
+  report); `report_rendered_at` records the rendering commit separately from the run commit.
+- Dashboard bug found in the browser, not by tests: screen-reader labels (`position: absolute`)
+  escaped the scrolling table box and gave the 320 px page a 1,700 px horizontal scroll.
+
 ---
 
 ## Rejected approaches
