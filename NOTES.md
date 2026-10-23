@@ -60,6 +60,32 @@ Working notes: what broke, what I tried, why X over Y.
   raises no volume alarm on the duplicate-id append (it counts every appended record as new,
   including the 50 that reuse ids; the logical walk counts only new ids).
 
+### 2026-10-23 — fresh-context review before the reported run
+
+An independent review (fresh context, given only the diff and the pre-registration) confirmed the
+frozen files were untouched since `cc3b9dc` and G3 holds at smoke (two runs byte-identical), and
+found:
+
+- **Fixed — orphan fault injected a second fault.** Orphan ids restarted at
+  `unregistered-001` every batch; a late row carrying yesterday's orphan id collided with a key
+  already loaded, so `unique` fired in 4 of 5 W1 seeds at the large severity. That would have put
+  three false "unique detects orphans" rows into H3. Ids now carry the batch number, and the G2
+  oracle rejects any orphan key repeated anywhere in the stream. G2 had passed because the oracle
+  never looked across batches: an oracle only catches what it is written to compare.
+- **Fixed — gates were not enforced.** `dq evaluate` printed verdicts after only G2 and G6, and on
+  the smoke grid too. Now `dq gates` records G1/G4/G5 with the commit, `dq simulate --g3` runs
+  twice, and `dq evaluate` refuses verdicts unless all six passed on the same clean commit; on the
+  smoke grid it stops after the gates.
+- **Fixed — lake batch rows.** The lake batch was "rows with unseen event ids"; the
+  pre-registration says "rows each append adds". Re-sent ids with new values were invisible to the
+  range and null checks. Now a multiset difference over every column.
+- **Fixed — latent date/Timestamp mismatch** in the loaded keys (never triggered by a fault).
+- **Stated, not changed:** G4 compares two rule engines that read the same contexts, so a bug in
+  building history or parent keys is invisible to it (the orphan bug was: GX agreed the keys
+  collided). Some G2 oracles share a row-count helper with the injector. G6 passes by construction
+  unless the twin join breaks. The lake freshness check runs once, on the latest version, against
+  the wall clock; the "compaction hides staleness" half of G5 is shown on synthetic snapshots.
+
 ---
 
 ## Rejected approaches
