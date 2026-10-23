@@ -289,6 +289,7 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
         "ks": manifest["ks"],
         "git_sha": manifest["git_sha"],
         "results_sha256": manifest["results_sha256"],
+        "report_rendered_at": _git_sha(),
         "k_default": spec.K_DEFAULT,
     }
     path = report.write_results(tables, meta, args.out)

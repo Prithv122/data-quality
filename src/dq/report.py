@@ -214,7 +214,9 @@ def render_markdown(tables: Mapping[str, pd.DataFrame], meta: Mapping[str, objec
     post = _get(tables, "post_fault_alarms")
     shown = []
     for world in _worlds(tables):
-        for _header, arm, k in _columns(tables, world, k_default):
+        # an operating point equal to the default k is the same (arm, k): list it once
+        pairs = dict.fromkeys((arm, k) for _h, arm, k in _columns(tables, world, k_default))
+        for arm, k in pairs:
             sub = post.loc[(post["world"] == world) & (post["arm"] == arm)]
             sub = sub.loc[sub["k"].isna()] if k is None else sub.loc[(sub["k"] - k).abs() < 1e-9]
             shown += [
