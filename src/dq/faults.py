@@ -191,8 +191,10 @@ def _orphan_fk(batches, stream, cond, params):
         if len(pick) == 0:
             continue
         ids = df["city_id"].astype(object).to_numpy(copy=True)
+        # Ids carry the batch number: reusing one in a later batch would collide with a late
+        # row's key from the earlier batch and inject a second, unlabelled duplicate fault.
         for n, i in enumerate(pick, start=1):
-            ids[i] = f"{ORPHAN_PREFIX}{n:03d}"
+            ids[i] = f"{ORPHAN_PREFIX}{b:02d}-{n:03d}"
         df["city_id"] = pd.Series(ids, index=df.index).astype("str")
 
 
@@ -468,6 +470,15 @@ def _verify_orphan(clean, faulted, cond, params):
         keep = fb["city_id"].to_numpy(dtype=object)[~changed]
         if any(v not in registered for v in keep):
             out.append(f"batch {b}: an untouched row has an unregistered city_id")
+    # An orphan row must not repeat any (city_id, date) key delivered anywhere in the stream.
+    keys: dict[tuple[str, object], int] = {}
+    for fb in faulted.batches:
+        if {"city_id", "date"} <= set(fb.columns):
+            for key in zip(fb["city_id"].astype(object), fb["date"], strict=True):
+                keys[key] = keys.get(key, 0) + 1
+    clashes = [k for k, n in keys.items() if n > 1 and str(k[0]).startswith(ORPHAN_PREFIX)]
+    if clashes:
+        out.append(f"{len(clashes)} orphan keys repeat elsewhere in the stream, e.g. {clashes[0]}")
     return out
 
 

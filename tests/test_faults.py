@@ -222,3 +222,26 @@ def test_verify_catches_a_shifted_onset(clean):
     cond = _cond("silent_shift", "small", onset=30)
     late = inject(clean, _cond("silent_shift", "small", onset=31))
     assert verify(clean, late, cond) != []
+
+
+def test_orphan_ids_never_repeat_a_key_across_batches(clean):
+    for severity in spec.SEVERITIES:
+        cond = _cond("orphan_fk", severity)
+        faulted = inject(clean, cond)
+        ids = [
+            v for df in faulted.batches for v in df["city_id"] if str(v).startswith("unregistered-")
+        ]
+        assert len(ids) == len(set(ids))
+        assert verify(clean, faulted, cond) == []
+
+
+def test_orphan_oracle_catches_a_reused_key(clean):
+    cond = _cond("orphan_fk", "small")
+    faulted = _copy(inject(clean, cond))
+    first, second = faulted.batches[cond.onset - 1], faulted.batches[cond.onset]
+    orphan = first.index[first["city_id"].astype(str).str.startswith("unregistered-")][0]
+    target = second.index[second["city_id"].astype(str).str.startswith("unregistered-")][0]
+    # The same orphan key delivered again one batch later: a duplicate the label does not name.
+    second.loc[target, "city_id"] = first.loc[orphan, "city_id"]
+    second.loc[target, "date"] = first.loc[orphan, "date"]
+    assert any("repeat elsewhere" in p for p in verify(clean, faulted, cond))
