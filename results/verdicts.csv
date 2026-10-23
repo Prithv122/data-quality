@@ -1,0 +1,5 @@
+hypothesis,world,verdict,detail
+H1,W1,supported,"a = 4 (A detects, S1 misses), s = 1 (S1 detects, A misses) over 10 small-severity conditions; k_A = 5, k_S1 = 8; clean FA/100: A 0.29, S1 0.14 (target 1/100 reached by both)"
+H1,W0,reported,"a = 0 (A detects, S1 misses), s = 0 (S1 detects, A misses) over 10 small-severity conditions; k_A = 4, k_S1 = 5; clean FA/100: A 0.72, S1 0.87 (target 1/100 reached by both); sensitivity world, does not decide H1"
+H2,W1,supported,"detected / conditions at k = 4: S0 0/15, S1 0/15, A 0/15"
+H2,W0,supported,"detected / conditions at k = 4: S0 0/15, S1 0/15, A 0/15"

@@ -1,0 +1,18 @@
+{
+  "git_sha": "5f88111",
+  "ran": "2026-10-23T15:54:17+00:00",
+  "gates": {
+    "G1": {
+      "passed": true,
+      "detail": "8 tables match"
+    },
+    "G4": {
+      "passed": true,
+      "detail": "12000 verdicts over 25 streams, 0 mismatches"
+    },
+    "G5": {
+      "passed": true,
+      "detail": "compaction silent, truncate flagged, travel intact"
+    }
+  }
+}
