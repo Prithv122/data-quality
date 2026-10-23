@@ -1,0 +1,132 @@
+{
+  "upstream": {
+    "repo": "22-elt-dbt-dagster",
+    "url": "https://github.com/Prithv122/elt-dbt-dagster",
+    "sha": "e20cecc8e48a7672f267b5686807f1e96b698ca4"
+  },
+  "logical_types": ["text", "double", "real", "integer", "numeric", "date", "timestamptz", "boolean"],
+  "freshness": {
+    "table": "raw.weather_daily",
+    "loaded_at_field": "ingested_at",
+    "warn_after_days": 3,
+    "error_after_days": 14
+  },
+  "tables": {
+    "raw.cities": {
+      "rows": 10,
+      "primary_key": ["city_id"],
+      "columns": {
+        "city_id": "text",
+        "city_name": "text",
+        "country": "text",
+        "latitude": "double",
+        "longitude": "double",
+        "population": "integer",
+        "climate_zone": "text",
+        "loaded_at": "timestamptz"
+      }
+    },
+    "raw.weather_daily": {
+      "rows": 7310,
+      "primary_key": ["city_id", "date"],
+      "foreign_keys": {"city_id": "raw.cities.city_id"},
+      "columns": {
+        "city_id": "text",
+        "date": "date",
+        "temp_max_c": "double",
+        "temp_min_c": "double",
+        "precip_mm": "double",
+        "wind_max_kmh": "double",
+        "ingested_at": "timestamptz"
+      }
+    },
+    "public_staging.stg_cities": {
+      "columns": {
+        "city_id": "text",
+        "city_name": "text",
+        "country": "text",
+        "latitude": "double",
+        "longitude": "double",
+        "population": "integer",
+        "climate_zone": "text",
+        "loaded_at": "timestamptz"
+      }
+    },
+    "public_staging.stg_weather_daily": {
+      "columns": {
+        "city_id": "text",
+        "date": "date",
+        "temp_max_c": "double",
+        "temp_min_c": "double",
+        "precip_mm": "double",
+        "wind_max_kmh": "double",
+        "ingested_at": "timestamptz"
+      }
+    },
+    "public_intermediate.int_weather_enriched": {
+      "columns": {
+        "city_id": "text",
+        "city_name": "text",
+        "country": "text",
+        "climate_zone": "text",
+        "date": "date",
+        "month_start": "date",
+        "year": "integer",
+        "temp_max_c": "double",
+        "temp_min_c": "double",
+        "diurnal_range_c": "double",
+        "precip_mm": "double",
+        "wind_max_kmh": "double",
+        "is_extreme_heat_day": "boolean",
+        "is_freezing_day": "boolean",
+        "is_heavy_rain_day": "boolean"
+      }
+    },
+    "public_marts.marts_city_monthly_climate": {
+      "columns": {
+        "city_id": "text",
+        "city_name": "text",
+        "country": "text",
+        "climate_zone": "text",
+        "month_start": "date",
+        "days_observed": "integer",
+        "avg_temp_max_c": "numeric",
+        "avg_temp_min_c": "numeric",
+        "avg_diurnal_range_c": "numeric",
+        "total_precip_mm": "numeric",
+        "avg_wind_max_kmh": "numeric",
+        "extreme_heat_days": "integer",
+        "freezing_days": "integer",
+        "heavy_rain_days": "integer"
+      }
+    },
+    "public_marts.marts_city_year_over_year": {
+      "columns": {
+        "city_id": "text",
+        "city_name": "text",
+        "country": "text",
+        "climate_zone": "text",
+        "avg_temp_max_c_2023": "numeric",
+        "avg_temp_max_c_2024": "numeric",
+        "avg_temp_max_c_delta": "numeric",
+        "total_precip_mm_2023": "numeric",
+        "total_precip_mm_2024": "numeric",
+        "total_precip_mm_delta": "numeric",
+        "extreme_heat_days_2023": "integer",
+        "extreme_heat_days_2024": "integer",
+        "extreme_heat_days_delta": "integer"
+      }
+    },
+    "public_marts.marts_global_daily_extremes": {
+      "columns": {
+        "date": "date",
+        "hottest_city_id": "text",
+        "hottest_city_name": "text",
+        "hottest_temp_max_c": "double",
+        "coldest_city_id": "text",
+        "coldest_city_name": "text",
+        "coldest_temp_min_c": "double"
+      }
+    }
+  }
+}

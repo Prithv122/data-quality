@@ -1,0 +1,133 @@
+# Check definitions for raw.weather_daily (the #22 contract). Frozen by PREREGISTRATION.md.
+#
+# kind: static     -> a fixed rule; same verdict whatever the history
+# kind: threshold  -> a scalar metric judged against a baseline of past batches
+#                     (median +/- k * scaled MAD); `mode` comes from the arm, not from here
+#
+# arms: S0 = the tests #22 itself declares (dbt tests + source freshness)
+#       S1 = S0 + schema contract + threshold checks with a FROZEN baseline (warm-up batches)
+#       A  = S0 + schema contract + threshold checks with a ROLLING baseline
+
+table: raw.weather_daily
+parent: raw.cities.city_id
+
+checks:
+  # --- schema -------------------------------------------------------------------------
+  - id: build.stg_weather_daily
+    family: schema
+    kind: static
+    # #22's staging model, run on the batch. A missing column breaks `dbt build`.
+    rule: staging_sql_runs
+    arms: [S0, S1, A]
+
+  - id: schema.contract
+    family: schema
+    kind: static
+    # Column names and logical types must equal tests/fixtures/contract_22.json.
+    rule: contract_equal
+    arms: [S1, A]
+
+  # --- freshness ----------------------------------------------------------------------
+  - id: freshness.source_22
+    family: freshness
+    kind: static
+    rule: max_age
+    column: ingested_at
+    warn_after_hours: 72
+    error_after_hours: 336
+    arms: [S0, S1, A]
+
+  - id: freshness.lag
+    family: freshness
+    kind: threshold
+    metric: lag_hours  # check_time - max(ingested_at) over everything loaded
+    side: upper
+    floor: 1.0  # hours
+    arms: [S1, A]
+
+  # --- volume -------------------------------------------------------------------------
+  - id: volume.rows
+    family: volume
+    kind: threshold
+    metric: row_count  # rows in the batch
+    side: two_sided
+    floor_relative: 0.01  # scale >= 1% of the baseline median
+    arms: [S1, A]
+
+  # --- nulls --------------------------------------------------------------------------
+  - id: not_null.city_id
+    family: nulls
+    kind: static
+    rule: not_null
+    column: city_id
+    arms: [S0, S1, A]
+
+  - id: not_null.date
+    family: nulls
+    kind: static
+    rule: not_null
+    column: date
+    arms: [S0, S1, A]
+
+  - id: null_rate.temp_max_c
+    family: nulls
+    kind: threshold
+    metric: null_rate
+    column: temp_max_c
+    side: upper
+    floor: 0.005  # 0.5 percentage points
+    arms: [S1, A]
+
+  - id: null_rate.precip_mm
+    family: nulls
+    kind: threshold
+    metric: null_rate
+    column: precip_mm
+    side: upper
+    floor: 0.005
+    arms: [S1, A]
+
+  # --- unique -------------------------------------------------------------------------
+  - id: unique.city_id_date
+    family: unique
+    kind: static
+    # No (city_id, date) twice within the batch, nor already loaded by an earlier batch.
+    rule: unique_with_history
+    columns: [city_id, date]
+    arms: [S0, S1, A]
+
+  # --- range --------------------------------------------------------------------------
+  - id: accepted_range.temp_max_c
+    family: range
+    kind: static
+    rule: accepted_range
+    column: temp_max_c
+    min: -90
+    max: 60
+    arms: [S0, S1, A]
+
+  - id: accepted_range.temp_min_c
+    family: range
+    kind: static
+    rule: accepted_range
+    column: temp_min_c
+    min: -90
+    max: 60
+    arms: [S0, S1, A]
+
+  - id: diurnal_non_negative
+    family: range
+    kind: static
+    # #22's singular test: temp_max_c - temp_min_c >= 0 (nulls pass, as in SQL).
+    rule: column_pair_ge
+    column_a: temp_max_c
+    column_b: temp_min_c
+    arms: [S0, S1, A]
+
+  # --- referential --------------------------------------------------------------------
+  - id: relationships.city_id
+    family: referential
+    kind: static
+    rule: relationships
+    column: city_id
+    arms: [S0, S1, A]
