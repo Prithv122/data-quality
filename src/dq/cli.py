@@ -25,7 +25,10 @@ def _git_sha() -> str | None:
         )
     except (OSError, subprocess.CalledProcessError):
         return None
-    dirty = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
+    # untracked files (results, stores) cannot change the code that ran
+    dirty = subprocess.run(
+        ["git", "status", "--porcelain", "--untracked-files=no"], capture_output=True, text=True
+    )
     return out.stdout.strip() + ("-dirty" if dirty.stdout.strip() else "")
 
 
