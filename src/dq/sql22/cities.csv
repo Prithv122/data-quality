@@ -1,0 +1,11 @@
+city_id,city_name,country,latitude,longitude,population,climate_zone
+chennai,Chennai,India,13.0827,80.2707,7100000,tropical_savanna
+mumbai,Mumbai,India,19.0760,72.8777,12400000,tropical_monsoon
+reykjavik,Reykjavik,Iceland,64.1466,-21.9426,140000,subarctic
+cairo,Cairo,Egypt,30.0444,31.2357,10100000,hot_desert
+singapore,Singapore,Singapore,1.3521,103.8198,5900000,tropical_rainforest
+anchorage,Anchorage,United States,61.2181,-149.9003,290000,subarctic
+nairobi,Nairobi,Kenya,-1.2921,36.8219,4400000,subtropical_highland
+london,London,United Kingdom,51.5072,-0.1276,8900000,temperate_oceanic
+phoenix,Phoenix,United States,33.4484,-112.0740,1680000,hot_desert
+oslo,Oslo,Norway,59.9139,10.7522,700000,humid_continental
