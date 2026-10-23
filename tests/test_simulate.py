@@ -265,3 +265,12 @@ def test_parallel_run_gives_identical_results(grid):
     assert parallel.results.equals(grid.results)
     assert parallel.conditions.equals(grid.conditions)
     assert parallel.verify_problems == grid.verify_problems
+
+
+def test_contexts_store_loaded_dates_as_dates_even_from_timestamps():
+    stream = _stream([2, 1])
+    first = stream.batches[0]
+    first["date"] = pd.to_datetime(first["date"])  # a driver handing DATE back as timestamps
+    ctx = contexts(stream)[1]
+    assert ("a-01", spec.STREAM_START) in ctx.loaded_keys
+    assert all(type(day) is dt.date for _, day in ctx.loaded_keys)

@@ -55,7 +55,8 @@ def contexts(stream: Stream, table: str = TABLE) -> list[BatchContext]:
         if "city_id" in df.columns and "date" in df.columns:
             for city, day in zip(df["city_id"], df["date"], strict=True):
                 if isinstance(city, str) and isinstance(day, dt.date):
-                    loaded.add((city, day))
+                    # a Timestamp is a date too, but never equal to one: keep the date part
+                    loaded.add((city, day.date() if isinstance(day, dt.datetime) else day))
     return out
 
 
